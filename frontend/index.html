@@ -3,272 +3,634 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VideoShare - Cloud Video Platform</title>
+    <title>JPTV - Stream & Share Videos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #ff0050;
-            --dark-bg: #121212;
-            --card-bg: #1e1e1e;
+            --bg-primary: #1a1d29;
+            --bg-secondary: #242836;
+            --bg-card: #2d3143;
+            --bg-hover: #363b52;
+            --accent-primary: #6c5ce7;
+            --accent-secondary: #a29bfe;
+            --accent-gradient: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
             --text-primary: #ffffff;
-            --text-secondary: #aaaaaa;
+            --text-secondary: #b2b8d4;
+            --text-muted: #7c829d;
+            --border-color: #3d4259;
+            --success: #00cec9;
+            --danger: #ff7675;
         }
-        
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            background-color: var(--dark-bg);
+            background: var(--bg-primary);
             color: var(--text-primary);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             min-height: 100vh;
         }
-        
+
+        /* Navbar */
         .navbar {
-            background-color: var(--card-bg) !important;
-            border-bottom: 1px solid #333;
+            background: var(--bg-secondary) !important;
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            backdrop-filter: blur(10px);
         }
-        
+
         .navbar-brand {
-            font-weight: bold;
-            color: var(--primary-color) !important;
-            font-size: 1.5rem;
-        }
-        
-        .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-        
-        .btn-primary:hover {
-            background-color: #ff1a6c;
-            border-color: #ff1a6c;
-        }
-        
-        .video-card {
-            background-color: var(--card-bg);
-            border: none;
-            border-radius: 12px;
-            overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        .video-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(255, 0, 80, 0.2);
-        }
-        
-        .video-thumbnail {
-            aspect-ratio: 16/9;
-            background-color: #000;
+            font-size: 1.75rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             display: flex;
             align-items: center;
-            justify-content: center;
-            position: relative;
+            gap: 0.5rem;
         }
-        
+
+        .navbar-brand i {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .btn-upload {
+            background: var(--accent-gradient);
+            border: none;
+            padding: 0.6rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+        }
+
+        .btn-upload:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(108, 92, 231, 0.4);
+            color: white;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 2rem;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        /* Video Grid */
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .video-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .video-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--accent-primary);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .video-thumbnail {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16/9;
+            overflow: hidden;
+            background: var(--bg-secondary);
+        }
+
         .video-thumbnail video {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
-        
-        .video-info {
-            padding: 1rem;
-        }
-        
-        .video-title {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: var(--text-primary);
-        }
-        
-        .video-meta {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-        
-        .upload-area {
-            background-color: var(--card-bg);
-            border: 2px dashed #444;
-            border-radius: 12px;
-            padding: 3rem;
-            text-align: center;
-            cursor: pointer;
-            transition: border-color 0.2s, background-color 0.2s;
-        }
-        
-        .upload-area:hover {
-            border-color: var(--primary-color);
-            background-color: rgba(255, 0, 80, 0.05);
-        }
-        
-        .upload-area.dragover {
-            border-color: var(--primary-color);
-            background-color: rgba(255, 0, 80, 0.1);
-        }
-        
-        .modal-content {
-            background-color: var(--card-bg);
-            color: var(--text-primary);
-        }
-        
-        .modal-header {
-            border-bottom-color: #333;
-        }
-        
-        .modal-footer {
-            border-top-color: #333;
-        }
-        
-        .form-control, .form-control:focus {
-            background-color: #2a2a2a;
-            border-color: #444;
-            color: var(--text-primary);
-        }
-        
-        .form-control:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 0.25rem rgba(255, 0, 80, 0.25);
-        }
-        
-        .progress {
-            height: 8px;
-            background-color: #333;
-        }
-        
-        .progress-bar {
-            background-color: var(--primary-color);
-        }
-        
-        .spinner-border {
-            color: var(--primary-color);
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 4rem 2rem;
-            color: var(--text-secondary);
-        }
-        
-        .empty-state i {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            color: #444;
-        }
-        
-        .delete-btn {
+
+        .video-duration {
             position: absolute;
-            top: 10px;
+            bottom: 10px;
             right: 10px;
-            background-color: rgba(255, 0, 0, 0.8);
-            border: none;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .video-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(108, 92, 231, 0.2);
             display: flex;
             align-items: center;
             justify-content: center;
             opacity: 0;
-            transition: opacity 0.2s;
+            transition: all 0.3s ease;
         }
-        
-        .video-card:hover .delete-btn {
+
+        .video-card:hover .video-overlay {
             opacity: 1;
         }
-        
+
+        .play-btn {
+            width: 60px;
+            height: 60px;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            box-shadow: 0 10px 30px rgba(108, 92, 231, 0.5);
+            transform: scale(0.8);
+            transition: all 0.3s ease;
+        }
+
+        .video-card:hover .play-btn {
+            transform: scale(1);
+        }
+
+        .video-info {
+            padding: 1rem 1.25rem;
+        }
+
+        .video-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .video-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .video-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .video-actions {
+            padding: 0 1.25rem 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-action {
+            background: var(--bg-hover);
+            border: none;
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+        }
+
+        .btn-action:hover {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .btn-action.delete:hover {
+            background: var(--danger);
+        }
+
+        /* Upload Modal */
+        .modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+        }
+
+        .modal-header {
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.5rem;
+        }
+
+        .modal-title {
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .btn-close {
+            filter: invert(1);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 16px;
+            padding: 3rem;
+            text-align: center;
+            background: var(--bg-card);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--accent-primary);
+            background: rgba(108, 92, 231, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--accent-primary);
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-hint {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .form-control {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            background: var(--bg-card);
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.2);
+            color: var(--text-primary);
+        }
+
+        .form-control::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-footer {
+            border-top: 1px solid var(--border-color);
+            padding: 1.5rem;
+        }
+
+        .btn-cancel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.6rem 1.5rem;
+            border-radius: 10px;
+        }
+
+        .btn-cancel:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .btn-submit {
+            background: var(--accent-gradient);
+            border: none;
+            color: white;
+            padding: 0.6rem 2rem;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        .btn-submit:hover {
+            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4);
+            color: white;
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Player Modal */
+        .player-modal .modal-content {
+            background: var(--bg-primary);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .player-modal .modal-header {
+            background: var(--bg-secondary);
+        }
+
+        .player-modal .modal-body {
+            padding: 0;
+        }
+
+        .player-modal video {
+            width: 100%;
+            max-height: 60vh;
+            background: black;
+        }
+
+        .transcript-section {
+            background: var(--bg-secondary);
+            padding: 1.25rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .transcript-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .transcript-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-transcribe {
+            background: var(--bg-card);
+            border: 1px solid var(--accent-primary);
+            color: var(--accent-secondary);
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-transcribe:hover {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .transcript-content {
+            background: var(--bg-card);
+            padding: 1rem;
+            border-radius: 12px;
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .player-footer {
+            background: var(--bg-secondary);
+            padding: 1rem 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .player-stats {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .stat-item i {
+            color: var(--accent-secondary);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .empty-icon {
+            font-size: 5rem;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-text {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Toast */
         .toast-container {
             position: fixed;
             top: 20px;
             right: 20px;
             z-index: 9999;
         }
+
+        .toast {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .toast.danger {
+            border-left: 4px solid var(--danger);
+        }
+
+        .toast.info {
+            border-left: 4px solid var(--accent-primary);
+        }
+
+        /* Progress */
+        .upload-progress {
+            margin-top: 1rem;
+        }
+
+        .progress {
+            height: 8px;
+            background: var(--bg-card);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: var(--accent-gradient);
+            transition: width 0.3s ease;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-hover);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-primary);
+        }
+
+        /* Loading Spinner */
+        .spinner-border {
+            color: var(--accent-primary);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 1rem;
+            }
+            .main-content {
+                padding: 1rem;
+            }
+            .video-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
-        <div class="container">
+    <nav class="navbar navbar-expand-lg sticky-top">
+        <div class="container-fluid">
             <a class="navbar-brand" href="#">
-                <i class="bi bi-play-circle-fill me-2"></i>VideoShare
+                <i class="bi bi-broadcast"></i>
+                JPTV
             </a>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+            <button class="btn btn-upload" data-bs-toggle="modal" data-bs-target="#uploadModal">
                 <i class="bi bi-cloud-upload me-2"></i>Upload
             </button>
         </div>
     </nav>
 
     <!-- Main Content -->
-    <main class="container py-4">
+    <main class="main-content">
+        <h2 class="section-title"><i class="bi bi-fire me-2"></i>Latest Videos</h2>
+        
+        <div id="videoGrid" class="video-grid">
+            <!-- Videos will be loaded here -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state d-none">
+            <i class="bi bi-camera-video empty-icon"></i>
+            <h3 class="empty-title">No videos yet</h3>
+            <p class="empty-text">Be the first to upload a video and start sharing!</p>
+            <button class="btn btn-upload" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                <i class="bi bi-cloud-upload me-2"></i>Upload Video
+            </button>
+        </div>
+
         <!-- Loading State -->
         <div id="loadingState" class="text-center py-5">
             <div class="spinner-border" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
-            <p class="mt-3 text-secondary">Loading videos...</p>
+            <p class="mt-3 text-muted">Loading videos...</p>
         </div>
-
-        <!-- Empty State -->
-        <div id="emptyState" class="empty-state d-none">
-            <i class="bi bi-camera-video"></i>
-            <h4>No videos yet</h4>
-            <p>Upload your first video to get started!</p>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                <i class="bi bi-cloud-upload me-2"></i>Upload Video
-            </button>
-        </div>
-
-        <!-- Video Grid -->
-        <div id="videoGrid" class="row g-4 d-none"></div>
     </main>
 
     <!-- Upload Modal -->
     <div class="modal fade" id="uploadModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="bi bi-cloud-upload me-2"></i>Upload Video
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title"><i class="bi bi-cloud-upload me-2"></i>Upload Video</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="uploadForm">
-                        <!-- Upload Area -->
-                        <div class="upload-area mb-4" id="uploadArea">
-                            <i class="bi bi-cloud-arrow-up" style="font-size: 3rem; color: #666;"></i>
-                            <p class="mt-3 mb-1">Drag and drop your video here</p>
-                            <p class="text-secondary small">or click to browse</p>
-                            <input type="file" id="videoInput" accept="video/*" class="d-none">
+                        <div class="upload-zone" id="uploadZone">
+                            <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                            <p class="upload-text">Drag & drop your video here</p>
+                            <p class="upload-hint">or click to browse</p>
+                            <input type="file" id="videoInput" accept="video/*" hidden>
                         </div>
-                        
-                        <!-- Selected File Info -->
-                        <div id="fileInfo" class="alert alert-secondary d-none">
-                            <i class="bi bi-file-earmark-play me-2"></i>
-                            <span id="fileName"></span>
-                            <button type="button" class="btn-close float-end" id="clearFile"></button>
+                        <div id="selectedFile" class="mt-3 d-none">
+                            <div class="d-flex align-items-center gap-2 p-3 rounded" style="background: var(--bg-card);">
+                                <i class="bi bi-film text-primary"></i>
+                                <span id="fileName" class="text-truncate flex-grow-1"></span>
+                                <button type="button" class="btn-close btn-sm" id="clearFile"></button>
+                            </div>
                         </div>
-
-                        <!-- Video Details -->
-                        <div class="mb-3">
-                            <label for="videoTitle" class="form-label">Title</label>
+                        <div class="upload-progress d-none" id="uploadProgress">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Uploading...</span>
+                                <span id="progressPercent">0%</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label class="form-label">Title</label>
                             <input type="text" class="form-control" id="videoTitle" placeholder="Enter video title" required>
                         </div>
-                        <div class="mb-3">
-                            <label for="videoDescription" class="form-label">Description</label>
-                            <textarea class="form-control" id="videoDescription" rows="3" placeholder="Enter video description"></textarea>
-                        </div>
-
-                        <!-- Upload Progress -->
-                        <div id="uploadProgress" class="d-none">
-                            <label class="form-label">Uploading...</label>
-                            <div class="progress">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
-                            </div>
-                            <small class="text-secondary mt-1 d-block" id="uploadStatus">Preparing upload...</small>
+                        <div class="mt-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" id="videoDescription" rows="3" placeholder="Describe your video..."></textarea>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="uploadBtn" disabled>
+                    <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-submit" id="uploadBtn" disabled>
                         <i class="bi bi-cloud-upload me-2"></i>Upload
                     </button>
                 </div>
@@ -277,39 +639,51 @@
     </div>
 
     <!-- Video Player Modal -->
-    <div class="modal fade" id="playerModal" tabindex="-1">
+    <div class="modal fade player-modal" id="playerModal" tabindex="-1">
         <div class="modal-dialog modal-xl modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="playerTitle">Video Title</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-0">
-                    <video id="videoPlayer" controls class="w-100" style="max-height: 60vh;"></video>
+                <div class="modal-body">
+                    <video id="videoPlayer" controls></video>
                     
-                    <!-- Transcript Section -->
-                    <div class="p-3 border-top border-secondary">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="mb-0"><i class="bi bi-card-text me-2"></i>Transcript</h6>
-                            <button class="btn btn-sm btn-outline-primary" id="transcribeBtn" onclick="transcribeCurrentVideo()">
-                                <i class="bi bi-mic me-1"></i>Generate Transcript
+                    <div class="transcript-section">
+                        <div class="transcript-header">
+                            <span class="transcript-title">
+                                <i class="bi bi-card-text"></i>
+                                Transcript
+                            </span>
+                            <button class="btn btn-transcribe" id="transcribeBtn" onclick="transcribeCurrentVideo()">
+                                <i class="bi bi-mic me-1"></i>Generate
                             </button>
                         </div>
-                        <div id="transcriptStatus" class="d-none">
-                            <div class="d-flex align-items-center text-warning">
-                                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                        <div id="transcriptStatus" class="d-none mb-2">
+                            <div class="d-flex align-items-center gap-2" style="color: var(--accent-secondary);">
+                                <div class="spinner-border spinner-border-sm"></div>
                                 <span>Generating transcript...</span>
                             </div>
                         </div>
-                        <div id="transcriptContent" class="bg-dark p-3 rounded" style="max-height: 150px; overflow-y: auto;">
-                            <p class="text-secondary mb-0 fst-italic">No transcript available. Click "Generate Transcript" to create one.</p>
+                        <div id="transcriptContent" class="transcript-content">
+                            <span style="color: var(--text-muted); font-style: italic;">No transcript available. Click "Generate" to create one.</span>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <div class="me-auto">
-                        <span class="text-secondary" id="playerMeta"></span>
+                <div class="player-footer">
+                    <div class="player-stats">
+                        <div class="stat-item">
+                            <i class="bi bi-eye"></i>
+                            <span id="playerViews">0 views</span>
+                        </div>
+                        <div class="stat-item">
+                            <i class="bi bi-clock"></i>
+                            <span id="playerDate">Just now</span>
+                        </div>
                     </div>
+                    <button class="btn btn-action delete" id="deleteVideoBtn">
+                        <i class="bi bi-trash me-1"></i>Delete
+                    </button>
                 </div>
             </div>
         </div>
