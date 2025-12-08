@@ -5,7 +5,7 @@ node_modules/
 local.settings.json
 
 # IDE
-.vscode/
+
 .idea/
 
 # OS files

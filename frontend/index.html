@@ -285,7 +285,26 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-0">
-                    <video id="videoPlayer" controls class="w-100" style="max-height: 70vh;"></video>
+                    <video id="videoPlayer" controls class="w-100" style="max-height: 60vh;"></video>
+                    
+                    <!-- Transcript Section -->
+                    <div class="p-3 border-top border-secondary">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0"><i class="bi bi-card-text me-2"></i>Transcript</h6>
+                            <button class="btn btn-sm btn-outline-primary" id="transcribeBtn" onclick="transcribeCurrentVideo()">
+                                <i class="bi bi-mic me-1"></i>Generate Transcript
+                            </button>
+                        </div>
+                        <div id="transcriptStatus" class="d-none">
+                            <div class="d-flex align-items-center text-warning">
+                                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                <span>Generating transcript...</span>
+                            </div>
+                        </div>
+                        <div id="transcriptContent" class="bg-dark p-3 rounded" style="max-height: 150px; overflow-y: auto;">
+                            <p class="text-secondary mb-0 fst-italic">No transcript available. Click "Generate Transcript" to create one.</p>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <div class="me-auto">

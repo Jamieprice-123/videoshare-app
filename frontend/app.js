@@ -305,3 +305,120 @@ function showToast(message, type = 'info') {
     
     toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
 }
+
+// Transcription Functions
+let currentVideoData = null;
+
+async function transcribeCurrentVideo() {
+    if (!currentVideoData) return;
+    
+    const transcribeBtn = document.getElementById('transcribeBtn');
+    const transcriptStatus = document.getElementById('transcriptStatus');
+    const transcriptContent = document.getElementById('transcriptContent');
+    
+    transcribeBtn.disabled = true;
+    transcriptStatus.classList.remove('d-none');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/videos/${currentVideoData.id}/transcribe`, {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (result.transcript) {
+            // Already has transcript
+            transcriptContent.innerHTML = `<p class="mb-0">${escapeHtml(result.transcript)}</p>`;
+            transcriptStatus.classList.add('d-none');
+            transcribeBtn.classList.add('d-none');
+        } else if (result.transcriptionStatus === 'processing') {
+            // Poll for results
+            showToast('Transcription started! This may take a few moments...', 'info');
+            pollTranscriptionStatus(currentVideoData.id);
+        }
+    } catch (error) {
+        console.error('Error starting transcription:', error);
+        showToast('Failed to start transcription', 'danger');
+        transcriptStatus.classList.add('d-none');
+        transcribeBtn.disabled = false;
+    }
+}
+
+async function pollTranscriptionStatus(videoId) {
+    const transcribeBtn = document.getElementById('transcribeBtn');
+    const transcriptStatus = document.getElementById('transcriptStatus');
+    const transcriptContent = document.getElementById('transcriptContent');
+    
+    let attempts = 0;
+    const maxAttempts = 30; // 30 attempts * 2 seconds = 60 seconds max
+    
+    const poll = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/videos/${videoId}/transcript`);
+            const result = await response.json();
+            
+            if (result.transcriptionStatus === 'completed' && result.transcript) {
+                transcriptContent.innerHTML = `<p class="mb-0">${escapeHtml(result.transcript)}</p>`;
+                transcriptStatus.classList.add('d-none');
+                transcribeBtn.classList.add('d-none');
+                showToast('Transcription complete!', 'success');
+                return;
+            } else if (result.transcriptionStatus === 'failed') {
+                transcriptContent.innerHTML = `<p class="text-danger mb-0">Transcription failed. Please try again.</p>`;
+                transcriptStatus.classList.add('d-none');
+                transcribeBtn.disabled = false;
+                showToast('Transcription failed', 'danger');
+                return;
+            }
+            
+            attempts++;
+            if (attempts < maxAttempts) {
+                setTimeout(poll, 2000); // Poll every 2 seconds
+            } else {
+                transcriptContent.innerHTML = `<p class="text-warning mb-0">Transcription is taking longer than expected. Please check back later.</p>`;
+                transcriptStatus.classList.add('d-none');
+                transcribeBtn.disabled = false;
+            }
+        } catch (error) {
+            console.error('Error polling transcription:', error);
+            transcriptStatus.classList.add('d-none');
+            transcribeBtn.disabled = false;
+        }
+    };
+    
+    poll();
+}
+
+// Update the playVideo function to store current video and load transcript
+const originalPlayVideo = playVideo;
+playVideo = function(video) {
+    currentVideoData = video;
+    
+    // Reset transcript UI
+    const transcribeBtn = document.getElementById('transcribeBtn');
+    const transcriptStatus = document.getElementById('transcriptStatus');
+    const transcriptContent = document.getElementById('transcriptContent');
+    
+    transcribeBtn.classList.remove('d-none');
+    transcribeBtn.disabled = false;
+    transcriptStatus.classList.add('d-none');
+    
+    if (video.transcript) {
+        transcriptContent.innerHTML = `<p class="mb-0">${escapeHtml(video.transcript)}</p>`;
+        transcribeBtn.classList.add('d-none');
+    } else {
+        transcriptContent.innerHTML = `<p class="text-secondary mb-0 fst-italic">No transcript available. Click "Generate Transcript" to create one.</p>`;
+    }
+    
+    // Call original function
+    playerTitle.textContent = video.title;
+    playerMeta.textContent = `${video.views || 0} views • ${formatDate(video.uploadDate)}`;
+    videoPlayer.src = video.videoUrl;
+    
+    const modal = new bootstrap.Modal(playerModal);
+    modal.show();
+    
+    playerModal.addEventListener('shown.bs.modal', () => {
+        videoPlayer.play();
+    }, { once: true });
+};
