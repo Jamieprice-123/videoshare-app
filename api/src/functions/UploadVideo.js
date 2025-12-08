@@ -1,6 +1,7 @@
 const { app } = require('@azure/functions');
 const { CosmosClient } = require('@azure/cosmos');
 const { BlobServiceClient } = require('@azure/storage-blob');
+const { QueueServiceClient } = require('@azure/storage-queue');
 const { v4: uuidv4 } = require('uuid');
 
 const cosmosClient = new CosmosClient(process.env.COSMOS_CONNECTION_STRING);
@@ -9,6 +10,9 @@ const container = database.container(process.env.COSMOS_CONTAINER);
 
 const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.STORAGE_CONNECTION_STRING);
 const containerClient = blobServiceClient.getContainerClient(process.env.STORAGE_CONTAINER);
+
+const queueServiceClient = QueueServiceClient.fromConnectionString(process.env.STORAGE_CONNECTION_STRING);
+const queueClient = queueServiceClient.getQueueClient('video-processing');
 
 app.http('UploadVideo', {
     methods: ['POST', 'OPTIONS'],
@@ -38,10 +42,7 @@ app.http('UploadVideo', {
                 return {
                     status: 400,
                     jsonBody: { error: 'No video file provided' },
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
-                    }
+                    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
                 };
             }
 
@@ -52,50 +53,55 @@ app.http('UploadVideo', {
             // Upload to Blob Storage
             const blockBlobClient = containerClient.getBlockBlobClient(blobName);
             const arrayBuffer = await videoFile.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
-            
-            await blockBlobClient.uploadData(buffer, {
-                blobHTTPHeaders: {
-                    blobContentType: videoFile.type
-                }
+            await blockBlobClient.upload(arrayBuffer, arrayBuffer.byteLength, {
+                blobHTTPHeaders: { blobContentType: videoFile.type }
             });
 
-            const videoUrl = blockBlobClient.url;
-
-            // Save metadata to Cosmos DB
+            // Create video metadata
             const videoMetadata = {
                 id: videoId,
                 title: title,
                 description: description,
                 userId: userId,
-                videoUrl: videoUrl,
+                videoUrl: blockBlobClient.url,
                 blobName: blobName,
                 contentType: videoFile.type,
-                size: buffer.length,
+                size: arrayBuffer.byteLength,
                 uploadDate: new Date().toISOString(),
                 views: 0,
-                likes: 0
+                likes: 0,
+                processingStatus: 'queued'
             };
 
+            // Save to Cosmos DB
             await container.items.create(videoMetadata);
+
+            // Add message to processing queue (Web-Queue-Worker pattern)
+            const queueMessage = {
+                videoId: videoId,
+                title: title,
+                userId: userId,
+                blobName: blobName,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Base64 encode the message for Azure Queue
+            const messageText = Buffer.from(JSON.stringify(queueMessage)).toString('base64');
+            await queueClient.sendMessage(messageText);
+            
+            context.log(`Video ${videoId} queued for processing`);
 
             return {
                 status: 201,
                 jsonBody: videoMetadata,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                }
+                headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
             };
         } catch (error) {
             context.log('Error uploading video:', error);
             return {
                 status: 500,
                 jsonBody: { error: 'Failed to upload video', details: error.message },
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                }
+                headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
             };
         }
     }
