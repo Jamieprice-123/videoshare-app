@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Local settings (contains secrets)
+local.settings.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Build outputs
+dist/
+bin/
+obj/
