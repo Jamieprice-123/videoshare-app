@@ -30,10 +30,10 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy to Azure Functions
-        uses: Azure/functions-action@v1
-        with:
-          app-name: 'videoshare-api-jp'
-          package: './api'
+        run: |
+          cd api
+          npm install -g azure-functions-core-tools@4 --unsafe-perm true
+          func azure functionapp publish videoshare-api-jp
 
   deploy-frontend:
     runs-on: ubuntu-latest
