@@ -546,6 +546,75 @@
             color: var(--accent-primary);
         }
 
+        /* Search Bar */
+        .search-section {
+            max-width: 600px;
+            margin-bottom: 2rem;
+        }
+
+        .search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1.25rem;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .search-input {
+            width: 100%;
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 50px;
+            padding: 0.9rem 3rem;
+            padding-left: 3.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.15);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-clear {
+            position: absolute;
+            right: 1rem;
+            background: var(--bg-hover);
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .search-clear:hover {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .search-results-count {
+            margin-top: 0.75rem;
+            padding-left: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .navbar {
@@ -576,6 +645,20 @@
 
     <!-- Main Content -->
     <main class="main-content">
+        <!-- Search Bar -->
+        <div class="search-section mb-4">
+            <div class="search-container">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" class="search-input" id="searchInput" placeholder="Search videos...">
+                <button class="search-clear d-none" id="searchClear">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="search-results-count d-none" id="searchResultsCount">
+                <span id="resultsText"></span>
+            </div>
+        </div>
+
         <h2 class="section-title"><i class="bi bi-fire me-2"></i>Latest Videos</h2>
         
         <div id="videoGrid" class="video-grid">
@@ -590,6 +673,13 @@
             <button class="btn btn-upload" data-bs-toggle="modal" data-bs-target="#uploadModal">
                 <i class="bi bi-cloud-upload me-2"></i>Upload Video
             </button>
+        </div>
+
+        <!-- No Results State -->
+        <div id="noResultsState" class="empty-state d-none">
+            <i class="bi bi-search empty-icon"></i>
+            <h3 class="empty-title">No videos found</h3>
+            <p class="empty-text">Try a different search term</p>
         </div>
 
         <!-- Loading State -->

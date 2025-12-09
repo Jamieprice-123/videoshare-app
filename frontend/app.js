@@ -25,8 +25,14 @@ const videoPlayer = document.getElementById('videoPlayer');
 const playerViews = document.getElementById('playerViews');
 const playerDate = document.getElementById('playerDate');
 const deleteVideoBtn = document.getElementById('deleteVideoBtn');
+const searchInput = document.getElementById('searchInput');
+const searchClear = document.getElementById('searchClear');
+const searchResultsCount = document.getElementById('searchResultsCount');
+const resultsText = document.getElementById('resultsText');
+const noResultsState = document.getElementById('noResultsState');
 
 let selectedVideoFile = null;
+let allVideos = [];
 let currentVideoData = null;
 
 // Initialize
@@ -83,6 +89,10 @@ function setupEventListeners() {
         videoPlayer.pause();
         videoPlayer.src = '';
     });
+
+    // Search functionality
+    searchInput.addEventListener('input', handleSearch);
+    searchClear.addEventListener('click', clearSearch);
 }
 
 function handleFileSelect(e) {
@@ -107,27 +117,69 @@ async function loadVideos() {
         loadingState.classList.remove('d-none');
         videoGrid.innerHTML = '';
         emptyState.classList.add('d-none');
+        noResultsState.classList.add('d-none');
         
         const response = await fetch(`${API_BASE_URL}/videos`);
         if (!response.ok) throw new Error('Failed to fetch videos');
         
-        const videos = await response.json();
+        allVideos = await response.json();
         
         loadingState.classList.add('d-none');
         
-        if (videos.length === 0) {
+        if (allVideos.length === 0) {
             emptyState.classList.remove('d-none');
             return;
         }
         
-        videos.forEach(video => {
-            videoGrid.appendChild(createVideoCard(video));
-        });
+        displayVideos(allVideos);
     } catch (error) {
         console.error('Error loading videos:', error);
         loadingState.classList.add('d-none');
         showToast('Failed to load videos', 'danger');
     }
+}
+
+function displayVideos(videos) {
+    videoGrid.innerHTML = '';
+    emptyState.classList.add('d-none');
+    noResultsState.classList.add('d-none');
+    
+    if (videos.length === 0) {
+        if (searchInput.value.trim()) {
+            noResultsState.classList.remove('d-none');
+        } else {
+            emptyState.classList.remove('d-none');
+        }
+        return;
+    }
+    
+    videos.forEach(video => {
+        videoGrid.appendChild(createVideoCard(video));
+    });
+}
+
+function handleSearch() {
+    const query = searchInput.value.trim().toLowerCase();
+    
+    if (query) {
+        searchClear.classList.remove('d-none');
+        const filtered = allVideos.filter(video => 
+            video.title.toLowerCase().includes(query) ||
+            (video.description && video.description.toLowerCase().includes(query))
+        );
+        displayVideos(filtered);
+        searchResultsCount.classList.remove('d-none');
+        resultsText.textContent = `${filtered.length} video${filtered.length !== 1 ? 's' : ''} found`;
+    } else {
+        clearSearch();
+    }
+}
+
+function clearSearch() {
+    searchInput.value = '';
+    searchClear.classList.add('d-none');
+    searchResultsCount.classList.add('d-none');
+    displayVideos(allVideos);
 }
 
 function createVideoCard(video) {
