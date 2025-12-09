@@ -57,11 +57,13 @@ app.http('UploadVideo', {
                 blobHTTPHeaders: { blobContentType: videoFile.type }
             });
 
-            // Create video metadata
+            const category = formData.get('category') || 'other';
+
             const videoMetadata = {
                 id: videoId,
                 title: title,
                 description: description,
+                category: category,
                 userId: userId,
                 videoUrl: blockBlobClient.url,
                 blobName: blobName,

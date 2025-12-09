@@ -187,6 +187,20 @@ function createVideoCard(video) {
     card.className = 'video-card';
     card.onclick = () => playVideo(video);
     
+    const categoryEmojis = {
+        entertainment: '🎬',
+        gaming: '🎮',
+        music: '🎵',
+        education: '📚',
+        sports: '⚽',
+        tech: '💻',
+        travel: '✈️',
+        other: '📁'
+    };
+    
+    const categoryEmoji = categoryEmojis[video.category] || '📁';
+    const categoryName = video.category ? video.category.charAt(0).toUpperCase() + video.category.slice(1) : 'Other';
+    
     card.innerHTML = `
         <div class="video-thumbnail">
             <video src="${video.videoUrl}" preload="metadata"></video>
@@ -195,6 +209,7 @@ function createVideoCard(video) {
                     <i class="bi bi-play-fill"></i>
                 </div>
             </div>
+            ${video.category ? `<span class="video-category-badge">${categoryEmoji} ${categoryName}</span>` : ''}
         </div>
         <div class="video-info">
             <h3 class="video-title">${escapeHtml(video.title)}</h3>
@@ -285,8 +300,9 @@ async function uploadVideo() {
     formData.append('video', selectedVideoFile);
     formData.append('title', title);
     formData.append('description', videoDescription.value.trim());
-    formData.append('userId', 'user-' + Date.now());
-    
+    formData.append('category', document.getElementById('videoCategory').value || 'other');
+    formData.append('userId', 'user-' + Date.now());    
+
     try {
         const response = await fetch(`${API_BASE_URL}/videos`, {
             method: 'POST',
@@ -316,6 +332,7 @@ async function uploadVideo() {
             videoInput.value = '';
             videoTitle.value = '';
             videoDescription.value = '';
+            document.getElementById('videoCategory').value = '';
             selectedFile.classList.add('d-none');
             uploadProgress.classList.add('d-none');
             progressBar.style.width = '0%';
