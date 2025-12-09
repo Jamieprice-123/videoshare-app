@@ -334,7 +334,7 @@ async function uploadVideo() {
     formData.append('title', title);
     formData.append('description', videoDescription.value.trim());
     formData.append('category', document.getElementById('videoCategory').value || 'other');
-    formData.append('userId', 'user-' + Date.now());    
+    formData.append('userId', currentUser ? currentUser.id : 'anonymous-' + Date.now());  
 
     try {
         const response = await fetch(`${API_BASE_URL}/videos`, {
@@ -566,3 +566,132 @@ async function likeVideo() {
         showToast('Failed to like video', 'danger');
     }
 }
+
+// ==================== AUTHENTICATION ====================
+
+let currentUser = null;
+
+// Check if user is logged in on page load
+function checkAuthState() {
+    const savedUser = localStorage.getItem('jptv_user');
+    if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        updateAuthUI(true);
+    } else {
+        updateAuthUI(false);
+    }
+}
+
+function updateAuthUI(isLoggedIn) {
+    const authButtons = document.getElementById('authButtons');
+    const userMenu = document.getElementById('userMenu');
+    const usernameDisplay = document.getElementById('usernameDisplay');
+
+    if (isLoggedIn && currentUser) {
+        authButtons.classList.add('d-none');
+        userMenu.classList.remove('d-none');
+        userMenu.classList.add('d-flex');
+        usernameDisplay.textContent = currentUser.displayName || currentUser.username;
+    } else {
+        authButtons.classList.remove('d-none');
+        userMenu.classList.add('d-none');
+        userMenu.classList.remove('d-flex');
+    }
+}
+
+async function login() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const loginError = document.getElementById('loginError');
+    const loginBtn = document.getElementById('loginBtn');
+
+    loginError.classList.add('d-none');
+    loginBtn.disabled = true;
+    loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Logging in...';
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            currentUser = result.user;
+            localStorage.setItem('jptv_user', JSON.stringify(result.user));
+            localStorage.setItem('jptv_token', result.token);
+            
+            updateAuthUI(true);
+            bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide();
+            document.getElementById('loginForm').reset();
+            showToast(`Welcome back, ${currentUser.displayName}!`, 'success');
+        } else {
+            loginError.textContent = result.error;
+            loginError.classList.remove('d-none');
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        loginError.textContent = 'Failed to login. Please try again.';
+        loginError.classList.remove('d-none');
+    } finally {
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right me-1"></i>Login';
+    }
+}
+
+async function register() {
+    const username = document.getElementById('registerUsername').value.trim();
+    const email = document.getElementById('registerEmail').value.trim();
+    const password = document.getElementById('registerPassword').value;
+    const registerError = document.getElementById('registerError');
+    const registerBtn = document.getElementById('registerBtn');
+
+    registerError.classList.add('d-none');
+    registerBtn.disabled = true;
+    registerBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Creating account...';
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, email, password })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            currentUser = result.user;
+            localStorage.setItem('jptv_user', JSON.stringify(result.user));
+            
+            updateAuthUI(true);
+            bootstrap.Modal.getInstance(document.getElementById('registerModal')).hide();
+            document.getElementById('registerForm').reset();
+            showToast(`Welcome to JPTV, ${currentUser.displayName}!`, 'success');
+        } else {
+            registerError.textContent = result.error;
+            registerError.classList.remove('d-none');
+        }
+    } catch (error) {
+        console.error('Register error:', error);
+        registerError.textContent = 'Failed to register. Please try again.';
+        registerError.classList.remove('d-none');
+    } finally {
+        registerBtn.disabled = false;
+        registerBtn.innerHTML = '<i class="bi bi-person-plus me-1"></i>Create Account';
+    }
+}
+
+function logout() {
+    currentUser = null;
+    localStorage.removeItem('jptv_user');
+    localStorage.removeItem('jptv_token');
+    updateAuthUI(false);
+    showToast('You have been logged out', 'info');
+}
+
+// Add to initialization
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuthState();
+});
