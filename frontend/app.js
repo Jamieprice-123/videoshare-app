@@ -1,29 +1,33 @@
 // API Configuration
-const API_BASE_URL = 'https://videoshare-api-jp.azurewebsites.net/api';
+const API_BASE_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:7071/api' 
+    : 'https://videoshare-api-jp.azurewebsites.net/api';
 
 // DOM Elements
 const videoGrid = document.getElementById('videoGrid');
-const loadingState = document.getElementById('loadingState');
 const emptyState = document.getElementById('emptyState');
+const loadingState = document.getElementById('loadingState');
 const uploadForm = document.getElementById('uploadForm');
-const uploadArea = document.getElementById('uploadArea');
+const uploadZone = document.getElementById('uploadZone');
 const videoInput = document.getElementById('videoInput');
-const fileInfo = document.getElementById('fileInfo');
-const fileName = document.getElementById('fileName');
-const clearFile = document.getElementById('clearFile');
 const videoTitle = document.getElementById('videoTitle');
 const videoDescription = document.getElementById('videoDescription');
 const uploadBtn = document.getElementById('uploadBtn');
 const uploadProgress = document.getElementById('uploadProgress');
-const progressBar = document.querySelector('.progress-bar');
-const uploadStatus = document.getElementById('uploadStatus');
-const uploadModal = document.getElementById('uploadModal');
+const progressBar = document.getElementById('progressBar');
+const progressPercent = document.getElementById('progressPercent');
+const selectedFile = document.getElementById('selectedFile');
+const fileName = document.getElementById('fileName');
+const clearFile = document.getElementById('clearFile');
 const playerModal = document.getElementById('playerModal');
-const videoPlayer = document.getElementById('videoPlayer');
 const playerTitle = document.getElementById('playerTitle');
-const playerMeta = document.getElementById('playerMeta');
+const videoPlayer = document.getElementById('videoPlayer');
+const playerViews = document.getElementById('playerViews');
+const playerDate = document.getElementById('playerDate');
+const deleteVideoBtn = document.getElementById('deleteVideoBtn');
 
-let selectedFile = null;
+let selectedVideoFile = null;
+let currentVideoData = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -31,54 +35,59 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
 });
 
-// Event Listeners
 function setupEventListeners() {
-    // Upload area click
-    uploadArea.addEventListener('click', () => videoInput.click());
+    // Upload zone click
+    uploadZone.addEventListener('click', () => videoInput.click());
     
     // File input change
     videoInput.addEventListener('change', handleFileSelect);
     
     // Drag and drop
-    uploadArea.addEventListener('dragover', (e) => {
+    uploadZone.addEventListener('dragover', (e) => {
         e.preventDefault();
-        uploadArea.classList.add('dragover');
+        uploadZone.classList.add('dragover');
     });
     
-    uploadArea.addEventListener('dragleave', () => {
-        uploadArea.classList.remove('dragover');
+    uploadZone.addEventListener('dragleave', () => {
+        uploadZone.classList.remove('dragover');
     });
     
-    uploadArea.addEventListener('drop', (e) => {
+    uploadZone.addEventListener('drop', (e) => {
         e.preventDefault();
-        uploadArea.classList.remove('dragover');
-        const files = e.dataTransfer.files;
-        if (files.length > 0 && files[0].type.startsWith('video/')) {
-            handleFile(files[0]);
+        uploadZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+            handleFile(e.dataTransfer.files[0]);
         }
     });
     
     // Clear file
-    clearFile.addEventListener('click', resetFileInput);
+    clearFile.addEventListener('click', () => {
+        selectedVideoFile = null;
+        videoInput.value = '';
+        selectedFile.classList.add('d-none');
+        uploadBtn.disabled = true;
+    });
     
     // Upload button
     uploadBtn.addEventListener('click', uploadVideo);
     
-    // Modal reset
-    uploadModal.addEventListener('hidden.bs.modal', resetUploadForm);
+    // Delete video button
+    deleteVideoBtn.addEventListener('click', () => {
+        if (currentVideoData) {
+            deleteVideo(currentVideoData.id, currentVideoData.userId);
+        }
+    });
     
-    // Player modal - stop video on close
+    // Stop video when modal closes
     playerModal.addEventListener('hidden.bs.modal', () => {
         videoPlayer.pause();
         videoPlayer.src = '';
     });
 }
 
-// File handling
 function handleFileSelect(e) {
-    const files = e.target.files;
-    if (files.length > 0) {
-        handleFile(files[0]);
+    if (e.target.files.length) {
+        handleFile(e.target.files[0]);
     }
 }
 
@@ -87,48 +96,33 @@ function handleFile(file) {
         showToast('Please select a video file', 'danger');
         return;
     }
-    
-    selectedFile = file;
-    fileName.textContent = `${file.name} (${formatFileSize(file.size)})`;
-    fileInfo.classList.remove('d-none');
-    uploadArea.classList.add('d-none');
+    selectedVideoFile = file;
+    fileName.textContent = file.name;
+    selectedFile.classList.remove('d-none');
     uploadBtn.disabled = false;
 }
 
-function resetFileInput() {
-    selectedFile = null;
-    videoInput.value = '';
-    fileInfo.classList.add('d-none');
-    uploadArea.classList.remove('d-none');
-    uploadBtn.disabled = true;
-}
-
-function resetUploadForm() {
-    resetFileInput();
-    videoTitle.value = '';
-    videoDescription.value = '';
-    uploadProgress.classList.add('d-none');
-    progressBar.style.width = '0%';
-}
-
-// API Functions
 async function loadVideos() {
     try {
         loadingState.classList.remove('d-none');
-        videoGrid.classList.add('d-none');
+        videoGrid.innerHTML = '';
         emptyState.classList.add('d-none');
         
         const response = await fetch(`${API_BASE_URL}/videos`);
+        if (!response.ok) throw new Error('Failed to fetch videos');
+        
         const videos = await response.json();
         
         loadingState.classList.add('d-none');
         
         if (videos.length === 0) {
             emptyState.classList.remove('d-none');
-        } else {
-            renderVideos(videos);
-            videoGrid.classList.remove('d-none');
+            return;
         }
+        
+        videos.forEach(video => {
+            videoGrid.appendChild(createVideoCard(video));
+        });
     } catch (error) {
         console.error('Error loading videos:', error);
         loadingState.classList.add('d-none');
@@ -136,26 +130,91 @@ async function loadVideos() {
     }
 }
 
-async function uploadVideo() {
-    if (!selectedFile) return;
+function createVideoCard(video) {
+    const card = document.createElement('div');
+    card.className = 'video-card';
+    card.onclick = () => playVideo(video);
     
-    const formData = new FormData();
-    formData.append('video', selectedFile);
-    formData.append('title', videoTitle.value || 'Untitled');
-    formData.append('description', videoDescription.value || '');
-    formData.append('userId', 'user-' + Date.now());
+    card.innerHTML = `
+        <div class="video-thumbnail">
+            <video src="${video.videoUrl}" preload="metadata"></video>
+            <div class="video-overlay">
+                <div class="play-btn">
+                    <i class="bi bi-play-fill"></i>
+                </div>
+            </div>
+        </div>
+        <div class="video-info">
+            <h3 class="video-title">${escapeHtml(video.title)}</h3>
+            <div class="video-meta">
+                <span><i class="bi bi-eye"></i> ${video.views || 0} views</span>
+                <span><i class="bi bi-clock"></i> ${formatDate(video.uploadDate)}</span>
+            </div>
+        </div>
+    `;
+    
+    return card;
+}
+
+async function playVideo(video) {
+    currentVideoData = video;
+    
+    playerTitle.textContent = video.title;
+    playerViews.textContent = `${video.views || 0} views`;
+    playerDate.textContent = formatDate(video.uploadDate);
+    videoPlayer.src = video.videoUrl;
+    
+    // Reset transcript UI
+    const transcribeBtn = document.getElementById('transcribeBtn');
+    const transcriptStatus = document.getElementById('transcriptStatus');
+    const transcriptContent = document.getElementById('transcriptContent');
+    
+    transcribeBtn.classList.remove('d-none');
+    transcribeBtn.disabled = false;
+    transcriptStatus.classList.add('d-none');
+    
+    if (video.transcript) {
+        transcriptContent.innerHTML = `<p style="margin: 0;">${escapeHtml(video.transcript)}</p>`;
+        transcribeBtn.classList.add('d-none');
+    } else {
+        transcriptContent.innerHTML = `<span style="color: var(--text-muted); font-style: italic;">No transcript available. Click "Generate" to create one.</span>`;
+    }
+    
+    const modal = new bootstrap.Modal(playerModal);
+    modal.show();
+    
+    // Increment view count
+    try {
+        const response = await fetch(`${API_BASE_URL}/videos/${video.id}`);
+        if (response.ok) {
+            const updatedVideo = await response.json();
+            currentVideoData = updatedVideo;
+            playerViews.textContent = `${updatedVideo.views || 0} views`;
+            // Update the card in the grid
+            loadVideos();
+        }
+    } catch (error) {
+        console.error('Error updating view count:', error);
+    }
+}
+
+async function uploadVideo() {
+    if (!selectedVideoFile) return;
+    
+    const title = videoTitle.value.trim();
+    if (!title) {
+        showToast('Please enter a title', 'danger');
+        return;
+    }
     
     uploadBtn.disabled = true;
     uploadProgress.classList.remove('d-none');
-    uploadStatus.textContent = 'Uploading video...';
     
-    // Simulate progress (actual progress tracking would need XHR)
-    let progress = 0;
-    const progressInterval = setInterval(() => {
-        progress += Math.random() * 15;
-        if (progress > 90) progress = 90;
-        progressBar.style.width = `${progress}%`;
-    }, 200);
+    const formData = new FormData();
+    formData.append('video', selectedVideoFile);
+    formData.append('title', title);
+    formData.append('description', videoDescription.value.trim());
+    formData.append('userId', 'user-' + Date.now());
     
     try {
         const response = await fetch(`${API_BASE_URL}/videos`, {
@@ -163,152 +222,66 @@ async function uploadVideo() {
             body: formData
         });
         
-        clearInterval(progressInterval);
-        progressBar.style.width = '100%';
-        uploadStatus.textContent = 'Upload complete!';
+        if (!response.ok) throw new Error('Upload failed');
         
-        if (response.ok) {
-            const video = await response.json();
+        // Simulate progress
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 10;
+            progressBar.style.width = `${progress}%`;
+            progressPercent.textContent = `${progress}%`;
+            if (progress >= 100) {
+                clearInterval(interval);
+            }
+        }, 100);
+        
+        await response.json();
+        
+        setTimeout(() => {
             showToast('Video uploaded successfully!', 'success');
             
-            setTimeout(() => {
-                bootstrap.Modal.getInstance(uploadModal).hide();
-                loadVideos();
-            }, 1000);
-        } else {
-            const error = await response.json();
-            throw new Error(error.error || 'Upload failed');
-        }
+            // Reset form
+            selectedVideoFile = null;
+            videoInput.value = '';
+            videoTitle.value = '';
+            videoDescription.value = '';
+            selectedFile.classList.add('d-none');
+            uploadProgress.classList.add('d-none');
+            progressBar.style.width = '0%';
+            uploadBtn.disabled = true;
+            
+            // Close modal and reload
+            bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
+            loadVideos();
+        }, 1000);
     } catch (error) {
-        clearInterval(progressInterval);
         console.error('Error uploading video:', error);
-        showToast(`Upload failed: ${error.message}`, 'danger');
-        uploadProgress.classList.add('d-none');
+        showToast('Failed to upload video', 'danger');
         uploadBtn.disabled = false;
+        uploadProgress.classList.add('d-none');
     }
 }
 
-async function deleteVideo(videoId) {
+async function deleteVideo(videoId, userId) {
     if (!confirm('Are you sure you want to delete this video?')) return;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/videos/${videoId}`, {
+        const response = await fetch(`${API_BASE_URL}/videos/${videoId}?userId=${userId}`, {
             method: 'DELETE'
         });
         
-        if (response.ok) {
-            showToast('Video deleted successfully', 'success');
-            loadVideos();
-        } else {
-            throw new Error('Delete failed');
-        }
+        if (!response.ok) throw new Error('Delete failed');
+        
+        showToast('Video deleted successfully', 'success');
+        bootstrap.Modal.getInstance(playerModal).hide();
+        loadVideos();
     } catch (error) {
         console.error('Error deleting video:', error);
         showToast('Failed to delete video', 'danger');
     }
 }
 
-function playVideo(video) {
-    playerTitle.textContent = video.title;
-    playerMeta.textContent = `${video.views || 0} views • ${formatDate(video.uploadDate)}`;
-    videoPlayer.src = video.videoUrl;
-    
-    const modal = new bootstrap.Modal(playerModal);
-    modal.show();
-    
-    // Auto-play when modal opens
-    playerModal.addEventListener('shown.bs.modal', () => {
-        videoPlayer.play();
-    }, { once: true });
-}
-
-// Rendering
-function renderVideos(videos) {
-    videoGrid.innerHTML = videos.map(video => `
-        <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
-            <div class="video-card card h-100" data-video-id="${video.id}">
-                <div class="video-thumbnail" onclick="playVideo(${JSON.stringify(video).replace(/"/g, '&quot;')})">
-                    <video src="${video.videoUrl}" muted preload="metadata"></video>
-                    <button class="delete-btn text-white" onclick="event.stopPropagation(); deleteVideo('${video.id}')">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
-                <div class="video-info">
-                    <h6 class="video-title text-truncate">${escapeHtml(video.title)}</h6>
-                    <p class="video-meta mb-0">
-                        <i class="bi bi-eye me-1"></i>${video.views || 0} views
-                        <span class="mx-2">•</span>
-                        ${formatDate(video.uploadDate)}
-                    </p>
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
-
-// Utility Functions
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-    
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    if (diffDays < 7) return `${diffDays} days ago`;
-    
-    return date.toLocaleDateString();
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function showToast(message, type = 'info') {
-    const toastContainer = document.querySelector('.toast-container');
-    const toastId = 'toast-' + Date.now();
-    
-    const bgClass = {
-        'success': 'bg-success',
-        'danger': 'bg-danger',
-        'warning': 'bg-warning',
-        'info': 'bg-primary'
-    }[type] || 'bg-primary';
-    
-    const toastHtml = `
-        <div id="${toastId}" class="toast ${bgClass} text-white" role="alert">
-            <div class="toast-body d-flex align-items-center">
-                <span>${message}</span>
-                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast"></button>
-            </div>
-        </div>
-    `;
-    
-    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
-    
-    const toastEl = document.getElementById(toastId);
-    const toast = new bootstrap.Toast(toastEl, { autohide: true, delay: 3000 });
-    toast.show();
-    
-    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
-}
-
 // Transcription Functions
-let currentVideoData = null;
-
 async function transcribeCurrentVideo() {
     if (!currentVideoData) return;
     
@@ -327,12 +300,10 @@ async function transcribeCurrentVideo() {
         const result = await response.json();
         
         if (result.transcript) {
-            // Already has transcript
-            transcriptContent.innerHTML = `<p class="mb-0">${escapeHtml(result.transcript)}</p>`;
+            transcriptContent.innerHTML = `<p style="margin: 0;">${escapeHtml(result.transcript)}</p>`;
             transcriptStatus.classList.add('d-none');
             transcribeBtn.classList.add('d-none');
         } else if (result.transcriptionStatus === 'processing') {
-            // Poll for results
             showToast('Transcription started! This may take a few moments...', 'info');
             pollTranscriptionStatus(currentVideoData.id);
         }
@@ -350,7 +321,7 @@ async function pollTranscriptionStatus(videoId) {
     const transcriptContent = document.getElementById('transcriptContent');
     
     let attempts = 0;
-    const maxAttempts = 30; // 30 attempts * 2 seconds = 60 seconds max
+    const maxAttempts = 30;
     
     const poll = async () => {
         try {
@@ -358,13 +329,13 @@ async function pollTranscriptionStatus(videoId) {
             const result = await response.json();
             
             if (result.transcriptionStatus === 'completed' && result.transcript) {
-                transcriptContent.innerHTML = `<p class="mb-0">${escapeHtml(result.transcript)}</p>`;
+                transcriptContent.innerHTML = `<p style="margin: 0;">${escapeHtml(result.transcript)}</p>`;
                 transcriptStatus.classList.add('d-none');
                 transcribeBtn.classList.add('d-none');
                 showToast('Transcription complete!', 'success');
                 return;
             } else if (result.transcriptionStatus === 'failed') {
-                transcriptContent.innerHTML = `<p class="text-danger mb-0">Transcription failed. Please try again.</p>`;
+                transcriptContent.innerHTML = `<span style="color: var(--danger);">Transcription failed. Please try again.</span>`;
                 transcriptStatus.classList.add('d-none');
                 transcribeBtn.disabled = false;
                 showToast('Transcription failed', 'danger');
@@ -373,9 +344,9 @@ async function pollTranscriptionStatus(videoId) {
             
             attempts++;
             if (attempts < maxAttempts) {
-                setTimeout(poll, 2000); // Poll every 2 seconds
+                setTimeout(poll, 2000);
             } else {
-                transcriptContent.innerHTML = `<p class="text-warning mb-0">Transcription is taking longer than expected. Please check back later.</p>`;
+                transcriptContent.innerHTML = `<span style="color: var(--text-muted);">Transcription is taking longer than expected. Please check back later.</span>`;
                 transcriptStatus.classList.add('d-none');
                 transcribeBtn.disabled = false;
             }
@@ -389,36 +360,42 @@ async function pollTranscriptionStatus(videoId) {
     poll();
 }
 
-// Update the playVideo function to store current video and load transcript
-const originalPlayVideo = playVideo;
-playVideo = function(video) {
-    currentVideoData = video;
+// Utility Functions
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
     
-    // Reset transcript UI
-    const transcribeBtn = document.getElementById('transcribeBtn');
-    const transcriptStatus = document.getElementById('transcriptStatus');
-    const transcriptContent = document.getElementById('transcriptContent');
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showToast(message, type = 'info') {
+    const container = document.querySelector('.toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type} show`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="toast-body d-flex align-items-center gap-2 p-3">
+            <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'}"></i>
+            ${message}
+        </div>
+    `;
+    container.appendChild(toast);
     
-    transcribeBtn.classList.remove('d-none');
-    transcribeBtn.disabled = false;
-    transcriptStatus.classList.add('d-none');
-    
-    if (video.transcript) {
-        transcriptContent.innerHTML = `<p class="mb-0">${escapeHtml(video.transcript)}</p>`;
-        transcribeBtn.classList.add('d-none');
-    } else {
-        transcriptContent.innerHTML = `<p class="text-secondary mb-0 fst-italic">No transcript available. Click "Generate Transcript" to create one.</p>`;
-    }
-    
-    // Call original function
-    playerTitle.textContent = video.title;
-    playerMeta.textContent = `${video.views || 0} views • ${formatDate(video.uploadDate)}`;
-    videoPlayer.src = video.videoUrl;
-    
-    const modal = new bootstrap.Modal(playerModal);
-    modal.show();
-    
-    playerModal.addEventListener('shown.bs.modal', () => {
-        videoPlayer.play();
-    }, { once: true });
-};
+    setTimeout(() => {
+        toast.remove();
+    }, 4000);
+}
