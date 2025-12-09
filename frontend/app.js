@@ -171,7 +171,14 @@ async function playVideo(video) {
         playerLikes.textContent = `${video.likes || 0} likes`;
     }
     if (likeBtn) {
-        likeBtn.classList.remove('liked');
+        const likedVideos = JSON.parse(localStorage.getItem('likedVideos') || '[]');
+        if (likedVideos.includes(video.id)) {
+            likeBtn.classList.add('liked');
+            likeBtn.innerHTML = '<i class="bi bi-heart-fill me-1"></i>Liked';
+        } else {
+            likeBtn.classList.remove('liked');
+            likeBtn.innerHTML = '<i class="bi bi-heart me-1"></i>Like';
+        }
     }
     
     // Reset transcript UI
@@ -419,7 +426,9 @@ async function likeVideo() {
     const likeBtn = document.getElementById('likeBtn');
     const playerLikes = document.getElementById('playerLikes');
     
-    const isLiked = likeBtn.classList.contains('liked');
+    // Check if already liked in localStorage
+    const likedVideos = JSON.parse(localStorage.getItem('likedVideos') || '[]');
+    const isLiked = likedVideos.includes(currentVideoData.id);
     const action = isLiked ? 'unlike' : 'like';
     
     try {
@@ -434,47 +443,19 @@ async function likeVideo() {
             playerLikes.textContent = `${result.likes} likes`;
             currentVideoData.likes = result.likes;
             
+            // Update localStorage
             if (action === 'like') {
+                likedVideos.push(currentVideoData.id);
                 likeBtn.classList.add('liked');
+                likeBtn.innerHTML = '<i class="bi bi-heart-fill me-1"></i>Liked';
                 showToast('Video liked!', 'success');
             } else {
+                const index = likedVideos.indexOf(currentVideoData.id);
+                if (index > -1) likedVideos.splice(index, 1);
                 likeBtn.classList.remove('liked');
+                likeBtn.innerHTML = '<i class="bi bi-heart me-1"></i>Like';
             }
-            
-            loadVideos();
-        }
-    } catch (error) {
-        console.error('Error liking video:', error);
-        showToast('Failed to like video', 'danger');
-    }
-}// Like Video Function
-async function likeVideo() {
-    if (!currentVideoData) return;
-    
-    const likeBtn = document.getElementById('likeBtn');
-    const playerLikes = document.getElementById('playerLikes');
-    
-    const isLiked = likeBtn.classList.contains('liked');
-    const action = isLiked ? 'unlike' : 'like';
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}/videos/${currentVideoData.id}/like`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action })
-        });
-        
-        if (response.ok) {
-            const result = await response.json();
-            playerLikes.textContent = `${result.likes} likes`;
-            currentVideoData.likes = result.likes;
-            
-            if (action === 'like') {
-                likeBtn.classList.add('liked');
-                showToast('Video liked!', 'success');
-            } else {
-                likeBtn.classList.remove('liked');
-            }
+            localStorage.setItem('likedVideos', JSON.stringify(likedVideos));
             
             loadVideos();
         }
