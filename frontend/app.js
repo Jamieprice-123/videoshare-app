@@ -33,6 +33,7 @@ const noResultsState = document.getElementById('noResultsState');
 
 let selectedVideoFile = null;
 let allVideos = [];
+let currentCategory = 'all';
 let currentVideoData = null;
 
 // Initialize
@@ -93,6 +94,16 @@ function setupEventListeners() {
     // Search functionality
     searchInput.addEventListener('input', handleSearch);
     searchClear.addEventListener('click', clearSearch);
+
+    // Category filter
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentCategory = btn.dataset.category;
+            filterVideos();
+        });
+    });
 }
 
 function handleFileSelect(e) {
@@ -163,23 +174,45 @@ function handleSearch() {
     
     if (query) {
         searchClear.classList.remove('d-none');
-        const filtered = allVideos.filter(video => 
-            video.title.toLowerCase().includes(query) ||
-            (video.description && video.description.toLowerCase().includes(query))
-        );
-        displayVideos(filtered);
-        searchResultsCount.classList.remove('d-none');
-        resultsText.textContent = `${filtered.length} video${filtered.length !== 1 ? 's' : ''} found`;
     } else {
-        clearSearch();
+        searchClear.classList.add('d-none');
     }
+    
+    filterVideos();
 }
 
 function clearSearch() {
     searchInput.value = '';
     searchClear.classList.add('d-none');
-    searchResultsCount.classList.add('d-none');
-    displayVideos(allVideos);
+    filterVideos();
+}
+
+function filterVideos() {
+    let filtered = allVideos;
+    
+    // Apply category filter
+    if (currentCategory !== 'all') {
+        filtered = filtered.filter(video => video.category === currentCategory);
+    }
+    
+    // Apply search filter
+    const query = searchInput.value.trim().toLowerCase();
+    if (query) {
+        filtered = filtered.filter(video => 
+            video.title.toLowerCase().includes(query) ||
+            (video.description && video.description.toLowerCase().includes(query))
+        );
+    }
+    
+    displayVideos(filtered);
+    
+    // Update results count
+    if (query || currentCategory !== 'all') {
+        searchResultsCount.classList.remove('d-none');
+        resultsText.textContent = `${filtered.length} video${filtered.length !== 1 ? 's' : ''} found`;
+    } else {
+        searchResultsCount.classList.add('d-none');
+    }
 }
 
 function createVideoCard(video) {

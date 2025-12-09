@@ -628,6 +628,37 @@
             color: var(--text-muted);
         }
 
+        /* Category Filter */
+        .category-filter {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            padding-bottom: 0.5rem;
+        }
+
+        .category-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .category-btn:hover {
+            border-color: var(--accent-primary);
+            color: var(--text-primary);
+        }
+
+        .category-btn.active {
+            background: var(--accent-gradient);
+            border-color: transparent;
+            color: white;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .navbar {
@@ -670,6 +701,37 @@
             <div class="search-results-count d-none" id="searchResultsCount">
                 <span id="resultsText"></span>
             </div>
+        </div>
+
+        <!-- Category Filter -->
+        <div class="category-filter mb-4">
+            <button class="category-btn active" data-category="all">
+                <i class="bi bi-grid-fill"></i> All
+            </button>
+            <button class="category-btn" data-category="entertainment">
+                🎬 Entertainment
+            </button>
+            <button class="category-btn" data-category="gaming">
+                🎮 Gaming
+            </button>
+            <button class="category-btn" data-category="music">
+                🎵 Music
+            </button>
+            <button class="category-btn" data-category="education">
+                📚 Education
+            </button>
+            <button class="category-btn" data-category="sports">
+                ⚽ Sports
+            </button>
+            <button class="category-btn" data-category="tech">
+                💻 Tech
+            </button>
+            <button class="category-btn" data-category="travel">
+                ✈️ Travel
+            </button>
+            <button class="category-btn" data-category="other">
+                📁 Other
+            </button>
         </div>
 
         <h2 class="section-title"><i class="bi bi-fire me-2"></i>Latest Videos</h2>
